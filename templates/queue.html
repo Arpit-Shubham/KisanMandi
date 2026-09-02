@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KisanMandi — Queue Status</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <strong>कतार की स्थिति</strong><br>
+        <span class="subtitle">Queue Live Status</span>
+      </div>
+      <a class="back" href="{{ url_for('home_page') }}">←</a>
+    </div>
+  </header>
+
+  <h2>कतार की स्थिति</h2>
+
+<p>
+    Currently Serving:
+    <strong id="current">-</strong>
+</p>
+
+<p>
+    Total People:
+    <strong id="total">-</strong>
+</p>
+
+<div id="queueList"></div>
+
+<script>
+
+async function loadQueue() {
+
+    const response = await fetch("/queue");
+
+    const data = await response.json();
+
+
+    document.getElementById("current").textContent =
+        data.current
+        ? "#" + data.current
+        : "Nobody";
+
+
+    document.getElementById("total").textContent =
+        data.total;
+
+
+    const list = document.getElementById("queueList");
+
+    list.innerHTML = "";
+
+
+    data.queue.forEach(function(person) {
+
+        list.innerHTML += `
+            <div class="slot">
+
+                <strong>
+                    Token #${person.token}
+                </strong>
+
+                <p>
+                    ${person.name}
+                </p>
+
+                <p>
+                    ${person.people_ahead}
+                    people ahead
+                </p>
+
+                <p>
+                    Estimated wait:
+                    ${person.estimated_wait} min
+                </p>
+
+            </div>
+        `;
+
+    });
+
+}
+
+loadQueue();
+
+</script>
+</body>
+</html>

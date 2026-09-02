@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="hi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KisanMandi — Home</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <div class="header-inner">
+          <div>
+            <h2>नमस्ते, <span id="name">...</span> जी</h2>
+
+            <p>
+              बुकिंग चुनें:
+              <select id="bookingSelect" onchange="loadHome(this.value)"></select>
+            </p>
+
+            <p id="mandi">Loading...</p>
+
+            <p id="distance"></p>
+
+            <p>
+              आपका टोकन:
+              <strong id="token"></strong>
+            </p>
+
+            <p>
+              स्थिति:
+              <strong id="status"></strong>
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main class="container">
+        <div class="content">
+          <script>
+            async function loadHome(token) {
+              const url = token ? "/home?token=" + token : "/home";
+              const response = await fetch(url);
+
+              const data = await response.json();
+
+              if (data.message) {
+                return;
+              }
+
+              document.getElementById("name").textContent = data.name;
+
+              document.getElementById("mandi").textContent =
+                data.mandi + " - " + data.center;
+
+              document.getElementById("distance").textContent =
+                "Distance: " + data.distance;
+
+              document.getElementById("token").textContent = "#" + data.token;
+
+              document.getElementById("status").textContent = data.status;
+
+              const select = document.getElementById("bookingSelect");
+              if (select.value != data.token) {
+                select.value = data.token;
+              }
+            }
+
+            async function loadBookingOptions() {
+              const response = await fetch("/bookings");
+              const bookingList = await response.json();
+
+              const select = document.getElementById("bookingSelect");
+              select.innerHTML = "";
+
+              bookingList.forEach((b) => {
+                const option = document.createElement("option");
+                option.value = b.token;
+                option.textContent =
+                  "#" + b.token + " - " + b.name + " (" + b.crop + ")";
+                select.appendChild(option);
+              });
+
+              if (bookingList.length) {
+                select.value = bookingList[bookingList.length - 1].token;
+              }
+            }
+
+            async function init() {
+              await loadBookingOptions();
+              loadHome();
+            }
+
+            init();
+          </script>
+
+          <div class="two-column">
+            <section>
+              <h2>आप क्या करना चाहते हैं?</h2>
+              <p class="muted">Select Action</p>
+
+              <div class="action-grid">
+                <a class="action" href="{{ url_for('booking_page') }}">
+                  <span class="action-icon">▣</span>
+                  <span class="action-title">स्लॉट बुक करें</span>
+                  <span class="muted">Book Slot</span>
+                </a>
+
+                <a class="action" href="{{ url_for('queue_page') }}">
+                  <span class="action-icon">♙</span>
+                  <span class="action-title">कतार देखें</span>
+                  <span class="muted">View Queue</span>
+                </a>
+
+                <a class="action" href="{{ url_for('tracking_page') }}">
+                  <span class="action-icon">▣</span>
+                  <span class="action-title">स्थिति देखें</span>
+                  <span class="muted">Track Status</span>
+                </a>
+
+                <a class="action" href="#">
+                  <span class="action-icon">☎</span>
+                  <span class="action-title">सहायता लें</span>
+                  <span class="muted">Call Help</span>
+                </a>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

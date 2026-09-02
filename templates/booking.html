@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="hi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KisanMandi — Slot Booking</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <div>
+          <strong>स्लॉट बुकिंग</strong><br />
+          <span class="subtitle">Slot Booking</span>
+        </div>
+        <a class="back" href="{{ url_for('home_page') }}">←</a>
+      </div>
+    </header>
+    <form id="bookingForm">
+      <label>Name</label>
+      <input type="text" id="name" placeholder="Enter your name" required />
+
+      <label>Mobile</label>
+      <input type="tel" id="mobile" placeholder="9876543210" required />
+
+      <label>Crop</label>
+      <select id="crop">
+        <option value="Wheat">Wheat / गेहूँ</option>
+        <option value="Rice">Rice / चावल</option>
+        <option value="Potato">Potato / आलू</option>
+      </select>
+
+      <label>Quantity</label>
+      <input
+        type="number"
+        id="quantity"
+        placeholder="Quantity in kg"
+        required
+      />
+
+      <label>Date</label>
+      <input type="date" id="date" required />
+
+      <label>Time Slot</label>
+      <select id="slot">
+        <option value="08:00 - 10:00">08:00 - 10:00 AM</option>
+
+        <option value="10:00 - 12:00">10:00 - 12:00 PM</option>
+      </select>
+
+      <button type="submit">बुकिंग पक्की करें / Confirm Booking</button>
+    </form>
+
+    <p id="result"></p>
+    <script>
+      document
+        .getElementById("bookingForm")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+
+          const data = {
+            name: document.getElementById("name").value,
+
+            mobile: document.getElementById("mobile").value,
+
+            crop: document.getElementById("crop").value,
+
+            quantity: document.getElementById("quantity").value,
+
+            date: document.getElementById("date").value,
+
+            slot: document.getElementById("slot").value,
+          };
+
+          const response = await fetch("/book-slot", {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify(data),
+          });
+
+          const booking = await response.json();
+
+          document.getElementById("result").innerHTML = `
+        <strong>Booking Successful!</strong><br><br>
+
+        Name: ${booking.name}<br>
+
+        Token: #${booking.token}<br>
+
+        Mandi: ${booking.mandi}<br>
+
+        Slot: ${booking.slot}<br>
+
+        Status: ${booking.status}
+    `;
+        });
+    </script>
+  </body>
+</html>
