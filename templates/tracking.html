@@ -1,123 +1,46 @@
-<!doctype html>
-<html lang="hi">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>KisanMandi — Booking Tracking</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='styles.css') }}"
-    />
-  </head>
-  <body>
-    <header class="app-header">
-      <div class="header-inner">
-        <div>
-          <strong>बुकिंग ट्रैकिंग</strong><br />
-          <span class="subtitle">Booking Tracking</span>
-        </div>
-        <a class="back" href="{{ url_for('home_page') }}">←</a>
-      </div>
-    </header>
-    <div id="bookingDetails">Loading...</div>
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>आपकी बुकिंग ट्रैकिंग</h2>
+  <div class="form-group">
+    <label>Select Booking</label>
+    <select id="bookingSelect" onchange="renderDetails(this.value)"></select>
+  </div>
+  <div id="detailsCard"></div>
+</div>
 
-    <div class="container">
-      <p>
-        बुकिंग चुनें:
-        <select id="bookingSelect" onchange="loadBooking(this.value)"></select>
-      </p>
+<script>
+let bookingsData = [];
+
+async function loadUserBookings() {
+  const res = await fetch("/bookings");
+  bookingsData = await res.json();
+  const select = document.getElementById("bookingSelect");
+  select.innerHTML = "";
+  
+  bookingsData.forEach(b => {
+    select.innerHTML += `<option value="${b.id}">Token #${b.token} - ${b.crop} (${b.date})</option>`;
+  });
+  if (bookingsData.length > 0) renderDetails(bookingsData[0].id);
+}
+
+async function renderDetails(id) {
+  const res = await fetch(`/status/${id}`);
+  const data = await res.json();
+  
+  document.getElementById("detailsCard").innerHTML = `
+    <div style="margin-top:15px; border-top: 1px solid #ccc; padding-top: 15px;">
+      <p><strong>Token Number:</strong> #${data.token}</p>
+      <p><strong>Name:</strong> ${data.name}</p>
+      <p><strong>Crop / Quantity:</strong> ${data.crop} (${data.quantity} kg)</p>
+      <p><strong>Mandi:</strong> ${data.mandi}</p>
+      <p><strong>Slot:</strong> ${data.date} [${data.slot}]</p>
+      <p><strong>Status:</strong> <span style="font-weight:bold; color:var(--primary);">${data.status}</span></p>
+      <p><strong>Payment Status:</strong> ${data.payment_status}</p>
     </div>
+  `;
+}
 
-    <script>
-      async function loadBooking(token) {
-        if (!token) {
-          token = 1;
-        }
-
-        const response = await fetch(`/status/${token}`);
-
-        const data = await response.json();
-
-        if (data.error) {
-          document.getElementById("bookingDetails").innerHTML =
-            "Booking not found";
-
-          return;
-        }
-
-        document.getElementById("bookingDetails").innerHTML = `
-
-        <h2>#${data.token}</h2>
-
-        <p>
-            <strong>Name:</strong>
-            ${data.name}
-        </p>
-
-        <p>
-            <strong>Crop:</strong>
-            ${data.crop}
-        </p>
-
-        <p>
-            <strong>Quantity:</strong>
-            ${data.quantity} kg
-        </p>
-
-        <p>
-            <strong>Mandi:</strong>
-            ${data.mandi}
-        </p>
-
-        <p>
-            <strong>Date:</strong>
-            ${data.date}
-        </p>
-
-        <p>
-            <strong>Time:</strong>
-            ${data.slot}
-        </p>
-
-        <p>
-            <strong>Status:</strong>
-            ${data.status}
-        </p>
-
-    `;
-
-        const select = document.getElementById("bookingSelect");
-        if (select.value != data.token) {
-          select.value = data.token;
-        }
-      }
-
-      async function loadBookingOptions() {
-        const response = await fetch("/bookings");
-        const bookingList = await response.json();
-
-        const select = document.getElementById("bookingSelect");
-        select.innerHTML = "";
-
-        bookingList.forEach((b) => {
-          const option = document.createElement("option");
-          option.value = b.token;
-          option.textContent =
-            "#" + b.token + " - " + b.name + " (" + b.crop + ")";
-          select.appendChild(option);
-        });
-
-        if (bookingList.length) {
-          select.value = bookingList[bookingList.length - 1].token;
-        }
-      }
-
-      async function init() {
-        await loadBookingOptions();
-        loadBooking(document.getElementById("bookingSelect").value);
-      }
-
-      init();
-    </script>
-  </body>
-</html>
+loadUserBookings();
+</script>
+{% endblock %}
