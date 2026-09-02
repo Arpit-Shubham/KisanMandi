@@ -1,106 +1,98 @@
-<!doctype html>
-<html lang="hi">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>KisanMandi — Slot Booking</title>
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='styles.css') }}"
-    />
-  </head>
-  <body>
-    <header class="app-header">
-      <div class="header-inner">
-        <div>
-          <strong>स्लॉट बुकिंग</strong><br />
-          <span class="subtitle">Slot Booking</span>
-        </div>
-        <a class="back" href="{{ url_for('home_page') }}">←</a>
-      </div>
-    </header>
-    <form id="bookingForm">
-      <label>Name</label>
-      <input type="text" id="name" placeholder="Enter your name" required />
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>स्लॉट बुकिंग / Slot Booking</h2>
+  <form id="bookingForm">
+    <div class="form-group">
+      <label>Select State Mandi</label>
+      <select id="mandi_id" onchange="checkAvailability()" required>
+        <option value="">-- Choose State Mandi --</option>
+        {% for m in mandis %}
+          <option value="{{ m.id }}">{{ m.state }} - {{ m.name }} ({{ m.center }})</option>
+        {% endfor %}
+      </select>
+    </div>
 
-      <label>Mobile</label>
-      <input type="tel" id="mobile" placeholder="9876543210" required />
-
-      <label>Crop</label>
+    <div class="form-group">
+      <label>Crop / फसल</label>
       <select id="crop">
         <option value="Wheat">Wheat / गेहूँ</option>
         <option value="Rice">Rice / चावल</option>
         <option value="Potato">Potato / आलू</option>
+        <option value="Maize">Maize / मक्का</option>
       </select>
+    </div>
 
-      <label>Quantity</label>
-      <input
-        type="number"
-        id="quantity"
-        placeholder="Quantity in kg"
-        required
-      />
+    <div class="form-group">
+      <label>Quantity (kg)</label>
+      <input type="number" id="quantity" required placeholder="Quantity in KG">
+    </div>
 
-      <label>Date</label>
-      <input type="date" id="date" required />
+    <div class="form-group">
+      <label>Date / तारीख</label>
+      <input type="date" id="date" onchange="checkAvailability()" required>
+    </div>
 
-      <label>Time Slot</label>
-      <select id="slot">
+    <div class="form-group">
+      <label>Time Slot Availability</label>
+      <div id="availabilityBadges" style="margin-bottom: 10px;">Select Mandi and Date to view availability</div>
+      <select id="slot" required>
         <option value="08:00 - 10:00">08:00 - 10:00 AM</option>
-
         <option value="10:00 - 12:00">10:00 - 12:00 PM</option>
+        <option value="12:00 - 02:00">12:00 - 02:00 PM</option>
+        <option value="02:00 - 04:00">02:00 - 04:00 PM</option>
       </select>
+    </div>
 
-      <button type="submit">बुकिंग पक्की करें / Confirm Booking</button>
-    </form>
+    <button type="submit">Confirm Booking</button>
+  </form>
+  <div id="bookingResult" style="margin-top: 15px;"></div>
+</div>
 
-    <p id="result"></p>
-    <script>
-      document
-        .getElementById("bookingForm")
-        .addEventListener("submit", async function (event) {
-          event.preventDefault();
+<script>
+async function checkAvailability() {
+  const mandiId = document.getElementById("mandi_id").value;
+  const date = document.getElementById("date").value;
+  if (!mandiId || !date) return;
 
-          const data = {
-            name: document.getElementById("name").value,
+  const res = await fetch(`/api/availability?mandi_id=${mandiId}&date=${date}`);
+  const data = await res.json();
+  
+  const container = document.getElementById("availabilityBadges");
+  container.innerHTML = "";
+  data.forEach(item => {
+    container.innerHTML += `<span class="badge-${item.color}" style="margin-right:8px;">${item.slot}: ${item.remaining} left</span>`;
+  });
+}
 
-            mobile: document.getElementById("mobile").value,
+document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    mandi_id: document.getElementById("mandi_id").value,
+    crop: document.getElementById("crop").value,
+    quantity: document.getElementById("quantity").value,
+    date: document.getElementById("date").value,
+    slot: document.getElementById("slot").value
+  };
 
-            crop: document.getElementById("crop").value,
+  const response = await fetch("/book-slot", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload)
+  });
 
-            quantity: document.getElementById("quantity").value,
-
-            date: document.getElementById("date").value,
-
-            slot: document.getElementById("slot").value,
-          };
-
-          const response = await fetch("/book-slot", {
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json",
-            },
-
-            body: JSON.stringify(data),
-          });
-
-          const booking = await response.json();
-
-          document.getElementById("result").innerHTML = `
-        <strong>Booking Successful!</strong><br><br>
-
-        Name: ${booking.name}<br>
-
-        Token: #${booking.token}<br>
-
-        Mandi: ${booking.mandi}<br>
-
-        Slot: ${booking.slot}<br>
-
-        Status: ${booking.status}
-    `;
-        });
-    </script>
-  </body>
-</html>
+  const res = await response.json();
+  if (response.ok) {
+    document.getElementById("bookingResult").innerHTML = `
+      <div class="card" style="border-color: green;">
+        <strong>Booking Successful!</strong><br>
+        Token Number: #${res.token}<br>
+        Mandi: ${res.mandi}<br>
+        Slot: ${res.slot}
+      </div>`;
+  } else {
+    document.getElementById("bookingResult").innerHTML = `<p style="color:red;">${res.error}</p>`;
+  }
+});
+</script>
+{% endblock %}
