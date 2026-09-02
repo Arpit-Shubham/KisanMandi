@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>एडमिन कंट्रोल पैनल (Admin Queue Operations)</h2>
+  <button onclick="fetchAdminQueue()" style="width: auto; padding: 6px 12px; margin-bottom: 10px;">Refresh Queue</button>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Token</th>
+        <th>Farmer</th>
+        <th>Mobile</th>
+        <th>Details</th>
+        <th>Status</th>
+        <th>Payment</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="adminTable"></tbody>
+  </table>
+</div>
+
+<script>
+async function fetchAdminQueue() {
+  const res = await fetch("/api/admin/queue");
+  const data = await res.json();
+  const body = document.getElementById("adminTable");
+  body.innerHTML = "";
+
+  data.forEach(item => {
+    body.innerHTML += `
+      <tr>
+        <td>#${item.token}</td>
+        <td>${item.name}</td>
+        <td>${item.mobile}</td>
+        <td>${item.crop} (${item.quantity}kg)</td>
+        <td><strong>${item.status}</strong></td>
+        <td>${item.payment_status}</td>
+        <td>
+          <button onclick="executeAction(${item.id}, 'NEXT')">Call Next</button>
+          <button onclick="executeAction(${item.id}, 'MARK_DONE')">Done</button>
+          <button onclick="executeAction(${item.id}, 'MARK_ABSENT')" style="background:var(--color-orange);">Absent</button>
+          <button onclick="executeAction(${item.id}, 'MARK_PAID')" style="background:var(--color-yellow); color:black;">Mark Paid</button>
+        </td>
+      </tr>`;
+  });
+}
+
+async function executeAction(bookingId, action) {
+  await fetch("/api/admin/action", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ booking_id: bookingId, action: action })
+  });
+  fetchAdminQueue();
+}
+
+fetchAdminQueue();
+setInterval(fetchAdminQueue, 5000);
+</script>
+{% endblock %}
