@@ -19,23 +19,20 @@ db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Parse parameters for Supabase Transaction Pooler (PgBouncer)
-if db_url.startswith("postgresql://"):
-    params = []
-    if "sslmode" not in db_url:
-        params.append("sslmode=require")
-    if "prepare_threshold" not in db_url:
-        params.append("prepare_threshold=0")
-    if "pgbouncer" not in db_url:
-        params.append("pgbouncer=true")
-    if params:
-        delimiter = "&" if "?" in db_url else "?"
-        db_url = f"{db_url}{delimiter}{'&'.join(params)}"
+# Clean invalid pgbouncer parameters from URL string if present
+if "pgbouncer=true" in db_url:
+    db_url = db_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+
+# Ensure sslmode=require for cloud PostgreSQL
+if db_url.startswith("postgresql://") and "sslmode" not in db_url:
+    delimiter = "&" if "?" in db_url else "?"
+    db_url = f"{db_url}{delimiter}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # NullPool prevents serverless execution contexts from re-using dead connections
+# prepare_threshold: None disables prepared statements for PgBouncer / Supabase Pooler safely
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool,
     "pool_pre_ping": True,
