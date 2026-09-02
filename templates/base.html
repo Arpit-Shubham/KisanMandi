@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KisanMandi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <strong>KisanMandi Portal</strong>
+      </div>
+      <div>
+        {% if current_user.is_authenticated %}
+          <span>Namaste, {{ current_user.name }}</span>
+          {% if current_user.is_admin %}
+            | <a href="{{ url_for('admin_page') }}">Admin Panel</a>
+          {% endif %}
+          | <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login_page') }}">Login</a> | 
+          <a href="{{ url_for('register_page') }}">Register</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    // Browser Notifications Handler
+    function requestNotificationPermission() {
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+    }
+    function sendBrowserNotification(title, body) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body: body, icon: '/static/icon.png' });
+      }
+    }
+    requestNotificationPermission();
+  </script>
+</body>
+</html>
