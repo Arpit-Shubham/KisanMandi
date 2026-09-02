@@ -1,0 +1,456 @@
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+body {
+  background: #fff;
+  color: #111;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+/* ---------- Responsive application shell ---------- */
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.app-header {
+  width: 100%;
+  border-bottom: 1px solid #999;
+}
+
+.header-inner {
+  width: min(1180px, calc(100% - 40px));
+  min-height: 72px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.brand {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.back {
+  font-size: 1.4rem;
+  padding: 8px 12px;
+}
+
+.container {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+/* On desktop, content is deliberately broad rather than a tiny card */
+.content {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.three-column {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* ---------- Typography ---------- */
+h1, h2, h3, p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  margin-bottom: 6px;
+}
+
+h2 {
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  margin-bottom: 5px;
+}
+
+h3 {
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  margin-bottom: 7px;
+}
+
+.subtitle,
+.muted {
+  color: #555;
+  font-size: .92rem;
+}
+
+/* ---------- Cards / sections ---------- */
+.section {
+  border: 1px solid #999;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 14px;
+}
+
+.hero {
+  text-align: center;
+  padding: 34px 24px;
+}
+
+.hero h1 {
+  margin-bottom: 4px;
+}
+
+.notice {
+  border: 1px solid #888;
+  border-radius: 12px;
+  padding: 15px 17px;
+  margin: 18px 0;
+}
+
+/* ---------- Forms ---------- */
+label {
+  display: block;
+  font-weight: 700;
+  margin: 18px 0 7px;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid #777;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 18px;
+  border: 1px solid #555;
+  border-radius: 10px;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.form-actions {
+  margin-top: 20px;
+}
+
+/* ---------- Home actions ---------- */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.action {
+  min-height: 150px;
+  border: 1px solid #888;
+  border-radius: 14px;
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.action-icon {
+  font-size: 30px;
+  margin-bottom: 12px;
+}
+
+.action-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* ---------- Booking ---------- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.step {
+  border: 1px solid #888;
+  border-radius: 9px;
+  padding: 10px;
+  text-align: center;
+  font-size: .9rem;
+}
+
+.date-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.slot {
+  border: 1px solid #888;
+  border-radius: 11px;
+  padding: 15px;
+  margin-top: 10px;
+}
+
+.slot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.slot.disabled {
+  opacity: .45;
+}
+
+/* ---------- Queue ---------- */
+.token {
+  border: 2px solid #555;
+  border-radius: 14px;
+  text-align: center;
+  padding: 30px 20px;
+  margin: 20px 0;
+}
+
+.token-number {
+  font-size: clamp(3.8rem, 11vw, 6.5rem);
+  line-height: 1;
+  font-weight: 800;
+  margin: 12px 0 20px;
+  letter-spacing: 2px;
+}
+
+.queue-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.big-number {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+}
+
+.progress {
+  height: 18px;
+  border: 1px solid #777;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 10px 0 20px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 75%;
+  border-right: 2px solid #555;
+}
+
+/* ---------- Tracking ---------- */
+.timeline {
+  padding-left: 28px;
+}
+
+.timeline-item {
+  position: relative;
+  border-left: 2px solid #aaa;
+  padding: 0 0 28px 25px;
+}
+
+.timeline-item:last-child {
+  border-left-color: transparent;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #555;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.timeline-item.current::before {
+  width: 18px;
+  height: 18px;
+  left: -11px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.detail strong {
+  display: block;
+  margin-bottom: 3px;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  border-top: 1px solid #aaa;
+  padding-top: 18px;
+  margin-top: 30px;
+  font-size: .9rem;
+}
+
+/* ---------- Tablet ---------- */
+@media (max-width: 850px) {
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .three-column {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .date-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---------- Phone ---------- */
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+
+  .header-inner,
+  .container {
+    width: calc(100% - 28px);
+  }
+
+  .header-inner {
+    min-height: 62px;
+  }
+
+  .container {
+    padding-top: 20px;
+    padding-bottom: 30px;
+  }
+
+  .section {
+    padding: 17px;
+    border-radius: 11px;
+  }
+
+  .hero {
+    padding: 26px 16px;
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .action {
+    min-height: 125px;
+    padding: 16px 10px;
+  }
+
+  .action-icon {
+    font-size: 25px;
+    margin-bottom: 8px;
+  }
+
+  .steps {
+    gap: 6px;
+  }
+
+  .step {
+    font-size: .78rem;
+    padding: 8px 5px;
+  }
+
+  .date-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .slot-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .queue-summary,
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .timeline {
+    padding-left: 20px;
+  }
+
+  .timeline-item {
+    padding-left: 20px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .header-inner,
+  .container {
+    width: calc(100% - 20px);
+  }
+
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .date-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .token-number {
+    font-size: 3.5rem;
+  }
+}
