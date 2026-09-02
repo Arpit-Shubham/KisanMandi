@@ -4,18 +4,22 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.pool import NullPool
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kisan-mandi-super-secret-key')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kisan-mandi-fixed-secret-key-2026')
 
-# Database URI setup for PostgreSQL (Vercel / Supabase / Neon) or local SQLite fallback
+# ---------------------------------------------------------------------------
+# Database Configuration
+# ---------------------------------------------------------------------------
+
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 
-# Standardize postgresql:// prefix
+# Convert legacy postgres:// to postgresql://
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Automatically attach required SSL mode and disable prepared statements for Supabase transaction pooler
+# Ensure query parameters required for Supabase transaction poolers
 if db_url.startswith("postgresql://"):
     params = []
     if "sslmode" not in db_url:
@@ -28,9 +32,11 @@ if db_url.startswith("postgresql://"):
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Use NullPool for serverless execution contexts
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "poolclass": NullPool,
     "pool_pre_ping": True,
-    "pool_recycle": 300,
 }
 
 db = SQLAlchemy(app)
@@ -38,7 +44,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login_page'
 
 # ---------------------------------------------------------------------------
-# Database Models
+# Models
 # ---------------------------------------------------------------------------
 
 class User(UserMixin, db.Model):
@@ -66,17 +72,16 @@ class Booking(db.Model):
     crop = db.Column(db.String(50), nullable=False)
     quantity = db.Column(db.Float, nullable=False)
     date = db.Column(db.String(10), nullable=False)
-    slot = db.Column(db.String(30), nullable=False)  # e.g., "08:00 AM - 08:10 AM"
+    slot = db.Column(db.String(30), nullable=False)
     token = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(30), default='WAITING')  # WAITING, IN_PROGRESS, COMPLETED, ABSENT
-    payment_status = db.Column(db.String(20), default='PENDING')  # PENDING, PAID
+    status = db.Column(db.String(30), default='WAITING')
+    payment_status = db.Column(db.String(20), default='PENDING')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Generate 54 discrete 10-minute slots between 08:00 AM and 05:00 PM
 def generate_10min_slots():
     slots = []
     start_time = datetime.strptime("08:00", "%H:%M")
@@ -91,15 +96,14 @@ def generate_10min_slots():
 
 ALL_SLOTS = generate_10min_slots()
 
-# Safe database initialization for Serverless cold boots
 with app.app_context():
     try:
         db.create_all()
     except Exception as e:
-        print("Database schema connection bypassed during cold boot:", e)
+        print("Schema init bypassed during cold boot:", e)
 
 # ---------------------------------------------------------------------------
-# Views
+# View Routes
 # ---------------------------------------------------------------------------
 
 @app.route("/")
@@ -117,11 +121,11 @@ def login_page():
             if user and check_password_hash(user.password_hash, password):
                 login_user(user)
                 return redirect(url_for("home_page"))
-            flash("Invalid credentials", "danger")
+            flash("Invalid mobile number or password.", "danger")
         except Exception as e:
             db.session.rollback()
-            print("Login error:", str(e))
-            flash("Database connection error. Try logging in again.", "danger")
+            print("LOGIN_ERROR:", str(e))
+            flash("Database execution failed during login.", "danger")
             
     return render_template("login.html")
 
@@ -153,7 +157,7 @@ def register_page():
 
         except Exception as e:
             db.session.rollback()
-            print(f"REGISTRATION_ERROR: {str(e)}")
+            print(f"REGISTRATION_EXCEPT: {str(e)}")
             flash("Failed to create account. Please try again.", "danger")
             return render_template("register.html")
 
@@ -241,15 +245,13 @@ def book_slot():
     slot = data.get("slot")
     
     try:
-        # Enforce strict 2-slot daily limit per farmer
         daily_count = Booking.query.filter_by(user_id=current_user.id, date=date).count()
         if daily_count >= 2:
             return jsonify({"error": "Limit exceeded: You can book at most 2 slots per day."}), 400
 
-        # Prevent double booking same 10-min slot
         existing = Booking.query.filter_by(mandi_id=mandi_id, date=date, slot=slot).first()
         if existing:
-            return jsonify({"error": "This 10-minute slot is already booked. Please select another slot."}), 400
+            return jsonify({"error": "This slot is already booked."}), 400
             
         tokens_today = Booking.query.filter_by(mandi_id=mandi_id, date=date).count()
         token_number = tokens_today + 1
@@ -278,8 +280,8 @@ def book_slot():
         })
     except Exception as e:
         db.session.rollback()
-        print("Booking error:", str(e))
-        return jsonify({"error": "Booking failed due to a server error. Please try again."}), 500
+        print("Booking Error:", str(e))
+        return jsonify({"error": "Booking failed. Try again."}), 500
 
 @app.route("/queue")
 @login_required
@@ -309,7 +311,7 @@ def get_queue():
 def get_status(booking_id):
     b = Booking.query.get(booking_id)
     if not b or b.user_id != current_user.id:
-        return jsonify({"error": "Booking not found"}), 404
+        return jsonify({"error": "Not found"}), 404
         
     return jsonify({
         "token": b.token,
@@ -336,7 +338,6 @@ def get_user_bookings():
         "status": b.status
     } for b in user_bookings])
 
-# Admin operations
 @app.route("/api/admin/queue")
 @login_required
 def admin_queue():
