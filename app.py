@@ -10,35 +10,23 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kisan-mandi-fixed-secret-key-2026')
 
 # ---------------------------------------------------------------------------
-# Database Configuration
+# Database Configuration (Neon Optimized)
 # ---------------------------------------------------------------------------
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 
-# 1. Convert legacy postgres:// to postgresql://
+# Convert legacy postgres:// to postgresql://
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-# 2. Strip invalid parameters like pgbouncer=true that crash psycopg2
-if "pgbouncer=true" in db_url:
-    db_url = db_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
-
-# 3. Ensure sslmode=require for cloud connections
-if db_url.startswith("postgresql://") and "sslmode" not in db_url:
-    delimiter = "&" if "?" in db_url else "?"
-    db_url = f"{db_url}{delimiter}sslmode=require"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 4. Engine configurations for Serverless (Vercel + Supabase)
-# Uses NullPool to prevent reusing dead serverless sockets, and disables prepared
-# statements for PgBouncer/Supavisor compatibility.
+# Optimized for Neon Pooled Serverless Connections
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool,
     "pool_pre_ping": True,
     "connect_args": {
-        "prepare_threshold": None,
         "connect_timeout": 10
     } if db_url.startswith("postgresql") else {}
 }
@@ -100,14 +88,37 @@ def generate_10min_slots():
 
 ALL_SLOTS = generate_10min_slots()
 
-with app.app_context():
-    try:
-        db.create_all()
-    except Exception as e:
-        print("Schema init bypassed during startup:", e)
+# Automatic Schema Creation & Seeding for Fresh Database
+def init_db():
+    with app.app_context():
+        try:
+            db.create_all()
+            
+            # Create default admin user if none exists
+            admin = User.query.filter_by(mobile="9999999999").first()
+            if not admin:
+                admin_pw = generate_password_hash("Admin@Kisan2026", method='pbkdf2:sha256')
+                admin = User(name="Admin", mobile="9999999999", password_hash=admin_pw, is_admin=True)
+                db.session.add(admin)
+                
+            # Seed Mandi data if empty
+            if Mandi.query.count() == 0:
+                sample_mandis = [
+                    Mandi(state="Punjab", name="Khanna Mandi", center="Central Yard"),
+                    Mandi(state="Haryana", name="Karnal Mandi", center="Gate 1"),
+                    Mandi(state="Uttar Pradesh", name="Agra Mandi", center="Block B")
+                ]
+                db.session.add_all(sample_mandis)
+                
+            db.session.commit()
+            print("Database initialized successfully.")
+        except Exception as e:
+            print("Database init bypassed:", e)
+
+init_db()
 
 # ---------------------------------------------------------------------------
-# View Routes
+# Routes
 # ---------------------------------------------------------------------------
 
 @app.route("/")
