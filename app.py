@@ -11,14 +11,20 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kisan-mandi-super-secre
 # Database URI setup for PostgreSQL (Vercel / Supabase / Neon) or local SQLite fallback
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 
-# Ensure standard postgresql:// prefix
+# Standardize postgresql:// prefix
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Ensure SSL mode is enabled for cloud PostgreSQL like Supabase
-if db_url.startswith("postgresql://") and "sslmode" not in db_url:
-    delimiter = "&" if "?" in db_url else "?"
-    db_url = f"{db_url}{delimiter}sslmode=require"
+# Automatically attach required SSL mode and disable prepared statements for Supabase transaction pooler
+if db_url.startswith("postgresql://"):
+    params = []
+    if "sslmode" not in db_url:
+        params.append("sslmode=require")
+    if "prepare_threshold" not in db_url:
+        params.append("prepare_threshold=0")
+    if params:
+        delimiter = "&" if "?" in db_url else "?"
+        db_url = f"{db_url}{delimiter}{'&'.join(params)}"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -103,32 +109,54 @@ def home_page():
 @app.route("/login", methods=["GET", "POST"])
 def login_page():
     if request.method == "POST":
-        mobile = request.form.get("mobile")
-        password = request.form.get("password")
-        user = User.query.filter_by(mobile=mobile).first()
-        if user and check_password_hash(user.password_hash, password):
-            login_user(user)
-            return redirect(url_for("home_page"))
-        flash("Invalid credentials", "danger")
+        mobile = request.form.get("mobile", "").strip()
+        password = request.form.get("password", "").strip()
+        
+        try:
+            user = User.query.filter_by(mobile=mobile).first()
+            if user and check_password_hash(user.password_hash, password):
+                login_user(user)
+                return redirect(url_for("home_page"))
+            flash("Invalid credentials", "danger")
+        except Exception as e:
+            db.session.rollback()
+            print("Login error:", str(e))
+            flash("Database connection error. Try logging in again.", "danger")
+            
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register_page():
     if request.method == "POST":
-        name = request.form.get("name")
-        mobile = request.form.get("mobile")
-        password = request.form.get("password")
-        
-        if User.query.filter_by(mobile=mobile).first():
-            flash("Mobile number already registered.", "warning")
-            return redirect(url_for("register_page"))
+        name = request.form.get("name", "").strip()
+        mobile = request.form.get("mobile", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not name or not mobile or not password:
+            flash("All fields are required.", "danger")
+            return render_template("register.html")
+
+        try:
+            existing_user = User.query.filter_by(mobile=mobile).first()
+            if existing_user:
+                flash("Mobile number already registered.", "warning")
+                return redirect(url_for("register_page"))
+
+            hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
+            new_user = User(name=name, mobile=mobile, password_hash=hashed_pw)
             
-        hashed_pw = generate_password_hash(password)
-        new_user = User(name=name, mobile=mobile, password_hash=hashed_pw)
-        db.session.add(new_user)
-        db.session.commit()
-        login_user(new_user)
-        return redirect(url_for("home_page"))
+            db.session.add(new_user)
+            db.session.commit()
+
+            login_user(new_user)
+            return redirect(url_for("home_page"))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"REGISTRATION_ERROR: {str(e)}")
+            flash("Failed to create account. Please try again.", "danger")
+            return render_template("register.html")
+
     return render_template("register.html")
 
 @app.route("/logout")
@@ -212,41 +240,46 @@ def book_slot():
     mandi_id = data.get("mandi_id")
     slot = data.get("slot")
     
-    # Enforce strict 2-slot daily limit per farmer
-    daily_count = Booking.query.filter_by(user_id=current_user.id, date=date).count()
-    if daily_count >= 2:
-        return jsonify({"error": "Limit exceeded: You can book at most 2 slots per day."}), 400
+    try:
+        # Enforce strict 2-slot daily limit per farmer
+        daily_count = Booking.query.filter_by(user_id=current_user.id, date=date).count()
+        if daily_count >= 2:
+            return jsonify({"error": "Limit exceeded: You can book at most 2 slots per day."}), 400
 
-    # Ensure slot is not double booked
-    existing = Booking.query.filter_by(mandi_id=mandi_id, date=date, slot=slot).first()
-    if existing:
-        return jsonify({"error": "This 10-minute slot is already booked. Please select another slot."}), 400
+        # Prevent double booking same 10-min slot
+        existing = Booking.query.filter_by(mandi_id=mandi_id, date=date, slot=slot).first()
+        if existing:
+            return jsonify({"error": "This 10-minute slot is already booked. Please select another slot."}), 400
+            
+        tokens_today = Booking.query.filter_by(mandi_id=mandi_id, date=date).count()
+        token_number = tokens_today + 1
         
-    tokens_today = Booking.query.filter_by(mandi_id=mandi_id, date=date).count()
-    token_number = tokens_today + 1
-    
-    booking = Booking(
-        user_id=current_user.id,
-        mandi_id=mandi_id,
-        crop=data.get("crop"),
-        quantity=float(data.get("quantity")),
-        date=date,
-        slot=slot,
-        token=token_number,
-        status="WAITING"
-    )
-    db.session.add(booking)
-    db.session.commit()
-    
-    mandi = Mandi.query.get(mandi_id)
-    return jsonify({
-        "id": booking.id,
-        "name": current_user.name,
-        "token": booking.token,
-        "mandi": mandi.name,
-        "slot": booking.slot,
-        "status": booking.status
-    })
+        booking = Booking(
+            user_id=current_user.id,
+            mandi_id=mandi_id,
+            crop=data.get("crop"),
+            quantity=float(data.get("quantity")),
+            date=date,
+            slot=slot,
+            token=token_number,
+            status="WAITING"
+        )
+        db.session.add(booking)
+        db.session.commit()
+        
+        mandi = Mandi.query.get(mandi_id)
+        return jsonify({
+            "id": booking.id,
+            "name": current_user.name,
+            "token": booking.token,
+            "mandi": mandi.name,
+            "slot": booking.slot,
+            "status": booking.status
+        })
+    except Exception as e:
+        db.session.rollback()
+        print("Booking error:", str(e))
+        return jsonify({"error": "Booking failed due to a server error. Please try again."}), 500
 
 @app.route("/queue")
 @login_required
