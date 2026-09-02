@@ -2,7 +2,18 @@
 {% block content %}
 <div class="card" style="max-width: 400px; margin: 40px auto;">
   <h2>Login / साइन इन</h2>
-  <form method="POST">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div style="padding: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #ffebee; color: #c62828;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('login_page') }}">
     <div class="form-group">
       <label>Mobile Number</label>
       <input type="tel" name="mobile" required placeholder="10-digit number">
