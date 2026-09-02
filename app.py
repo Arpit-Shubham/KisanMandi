@@ -15,15 +15,15 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'kisan-mandi-fixed-secre
 
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 
-# Convert legacy postgres:// to postgresql://
+# 1. Convert legacy postgres:// to postgresql://
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Clean invalid pgbouncer parameters from URL string if present
+# 2. Strip invalid parameters like pgbouncer=true that crash psycopg2
 if "pgbouncer=true" in db_url:
     db_url = db_url.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
 
-# Ensure sslmode=require for cloud PostgreSQL
+# 3. Ensure sslmode=require for cloud connections
 if db_url.startswith("postgresql://") and "sslmode" not in db_url:
     delimiter = "&" if "?" in db_url else "?"
     db_url = f"{db_url}{delimiter}sslmode=require"
@@ -31,13 +31,15 @@ if db_url.startswith("postgresql://") and "sslmode" not in db_url:
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# NullPool prevents serverless execution contexts from re-using dead connections
-# prepare_threshold: None disables prepared statements for PgBouncer / Supabase Pooler safely
+# 4. Engine configurations for Serverless (Vercel + Supabase)
+# Uses NullPool to prevent reusing dead serverless sockets, and disables prepared
+# statements for PgBouncer/Supavisor compatibility.
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool,
     "pool_pre_ping": True,
     "connect_args": {
-        "prepare_threshold": None
+        "prepare_threshold": None,
+        "connect_timeout": 10
     } if db_url.startswith("postgresql") else {}
 }
 
@@ -102,7 +104,7 @@ with app.app_context():
     try:
         db.create_all()
     except Exception as e:
-        print("Schema init bypassed during cold boot:", e)
+        print("Schema init bypassed during startup:", e)
 
 # ---------------------------------------------------------------------------
 # View Routes
