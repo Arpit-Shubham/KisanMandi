@@ -1,92 +1,42 @@
-<!doctype html>
-<html lang="hi">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KisanMandi — Queue Status</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-  <header class="app-header">
-    <div class="header-inner">
-      <div>
-        <strong>कतार की स्थिति</strong><br>
-        <span class="subtitle">Queue Live Status</span>
-      </div>
-      <a class="back" href="{{ url_for('home_page') }}">←</a>
-    </div>
-  </header>
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>लाइव कतार की स्थिति (Live Queue)</h2>
+  <p>Currently Serving Token: <strong id="current" style="font-size: 1.5rem; color: var(--primary);">-</strong></p>
+  <p>Total Waiting: <strong id="total">-</strong></p>
+</div>
 
-  <h2>कतार की स्थिति</h2>
-
-<p>
-    Currently Serving:
-    <strong id="current">-</strong>
-</p>
-
-<p>
-    Total People:
-    <strong id="total">-</strong>
-</p>
-
-<div id="queueList"></div>
+<div id="queueContainer"></div>
 
 <script>
+let lastToken = null;
 
-async function loadQueue() {
+async function pollQueue() {
+  const res = await fetch("/queue");
+  const data = await res.json();
 
-    const response = await fetch("/queue");
+  if (lastToken !== null && lastToken !== data.current) {
+    sendBrowserNotification("Kisan Mandi Update", `Now serving Token #${data.current}`);
+  }
+  lastToken = data.current;
 
-    const data = await response.json();
+  document.getElementById("current").textContent = data.current ? `#${data.current}` : "None";
+  document.getElementById("total").textContent = data.total;
 
+  const container = document.getElementById("queueContainer");
+  container.innerHTML = "";
 
-    document.getElementById("current").textContent =
-        data.current
-        ? "#" + data.current
-        : "Nobody";
-
-
-    document.getElementById("total").textContent =
-        data.total;
-
-
-    const list = document.getElementById("queueList");
-
-    list.innerHTML = "";
-
-
-    data.queue.forEach(function(person) {
-
-        list.innerHTML += `
-            <div class="slot">
-
-                <strong>
-                    Token #${person.token}
-                </strong>
-
-                <p>
-                    ${person.name}
-                </p>
-
-                <p>
-                    ${person.people_ahead}
-                    people ahead
-                </p>
-
-                <p>
-                    Estimated wait:
-                    ${person.estimated_wait} min
-                </p>
-
-            </div>
-        `;
-
-    });
-
+  data.queue.forEach(item => {
+    container.innerHTML += `
+      <div class="card">
+        <strong>Token #${item.token} - ${item.name}</strong>
+        <p>People Ahead: ${item.people_ahead}</p>
+        <p>Estimated Wait: ${item.estimated_wait} mins</p>
+      </div>`;
+  });
 }
 
-loadQueue();
-
+pollQueue();
+setInterval(pollQueue, 4000); // Live poll every 4s
 </script>
-</body>
-</html>
+{% endblock %}
