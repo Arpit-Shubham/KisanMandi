@@ -2,7 +2,18 @@
 {% block content %}
 <div class="card" style="max-width: 400px; margin: 40px auto;">
   <h2>Register / पंजीकरण</h2>
-  <form method="POST">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div style="padding: 10px; margin-bottom: 10px; border-radius: 4px; background-color: #ffebee; color: #c62828;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('register_page') }}">
     <div class="form-group">
       <label>Full Name</label>
       <input type="text" name="name" required placeholder="Farmer Name">
