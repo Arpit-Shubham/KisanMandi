@@ -19,13 +19,15 @@ db_url = os.environ.get('DATABASE_URL', 'sqlite:///kisan_mandi.db')
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# Ensure query parameters required for Supabase transaction poolers
+# Parse parameters for Supabase Transaction Pooler (PgBouncer)
 if db_url.startswith("postgresql://"):
     params = []
     if "sslmode" not in db_url:
         params.append("sslmode=require")
     if "prepare_threshold" not in db_url:
         params.append("prepare_threshold=0")
+    if "pgbouncer" not in db_url:
+        params.append("pgbouncer=true")
     if params:
         delimiter = "&" if "?" in db_url else "?"
         db_url = f"{db_url}{delimiter}{'&'.join(params)}"
@@ -33,10 +35,13 @@ if db_url.startswith("postgresql://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Use NullPool for serverless execution contexts
+# NullPool prevents serverless execution contexts from re-using dead connections
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool,
     "pool_pre_ping": True,
+    "connect_args": {
+        "prepare_threshold": None
+    } if db_url.startswith("postgresql") else {}
 }
 
 db = SQLAlchemy(app)
@@ -124,8 +129,9 @@ def login_page():
             flash("Invalid mobile number or password.", "danger")
         except Exception as e:
             db.session.rollback()
-            print("LOGIN_ERROR:", str(e))
-            flash("Database execution failed during login.", "danger")
+            error_msg = f"LOGIN_ERROR: {type(e).__name__} - {str(e)}"
+            print(error_msg)
+            flash(error_msg, "danger")
             
     return render_template("login.html")
 
@@ -157,8 +163,9 @@ def register_page():
 
         except Exception as e:
             db.session.rollback()
-            print(f"REGISTRATION_EXCEPT: {str(e)}")
-            flash("Failed to create account. Please try again.", "danger")
+            error_msg = f"REGISTRATION_ERROR: {type(e).__name__} - {str(e)}"
+            print(error_msg)
+            flash(error_msg, "danger")
             return render_template("register.html")
 
     return render_template("register.html")
